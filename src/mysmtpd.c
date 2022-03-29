@@ -27,27 +27,6 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-// Have your program send the initial welcome message and immediately return.
-void greeting(int fd, struct utsname name)
-{
-    int error = uname(&name); // returns system information in the structure pointed to by buf
-    if (error == -1)
-    {
-        return;
-    }
-    else
-    {
-        char msg[] = "220 %s simple mail transfer protocol ready\r\n";
-        int len, bytes_sent;
-        bytes_sent = send_formatted(fd, msg, name.nodename);
-
-        if (bytes_sent == -1)
-        {
-            return;
-        }
-    }
-}
-
 void handle_client(int fd)
 {
 
@@ -58,9 +37,22 @@ void handle_client(int fd)
     uname(&my_uname);
 
     /* TO BE COMPLETED BY THE STUDENT */
-    // greeting(fd, my_uname);
-    static char * msg = "220 %s simple mail transfer protocol ready\r\n";
-    bytes_sent = send_formatted(fd, msg, name.nodename);
+    // welcome message
+    static char *msg = "220 %s simple mail transfer protocol ready\r\n";
+    send_formatted(fd, msg, my_uname.nodename);
+
+    while (nb_read_line(nb, recvbuf))
+    {
+        char *parts[(MAX_LINE_LENGTH + 1) / 2];
+        // todo check if nothing in there
+        split(recvbuf, parts);
+        char * command = parts[0];
+        if (strcasecmp("QUIT", command)) {
+            send_formatted(fd, "500");
+        } else {
+            send_formatted(fd, "500");
+        }
+    }
 
     nb_destroy(nb);
 }
