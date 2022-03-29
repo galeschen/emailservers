@@ -59,8 +59,8 @@ void handle_client(int fd)
 
     /* TO BE COMPLETED BY THE STUDENT */
     // greeting(fd, my_uname);
-    char msg[] = "220 %s simple mail transfer protocol ready\r\n";
-    bytes_sent = send_formatted(fd, &msg, name.nodename);
+    static char * msg = "220 %s simple mail transfer protocol ready\r\n";
+    bytes_sent = send_formatted(fd, msg, name.nodename);
 
     nb_destroy(nb);
 }
