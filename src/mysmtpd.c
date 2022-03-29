@@ -46,7 +46,7 @@ void handle_client(int fd)
         char *parts[(MAX_LINE_LENGTH + 1) / 2];
 
         int splitTimes = split(recvbuf, parts);
-        if (splitTimes == 1) {
+        if (splitTimes == 0) {
             continue;
         }
 
