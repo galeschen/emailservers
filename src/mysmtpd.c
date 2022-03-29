@@ -1,6 +1,7 @@
 #include "netbuffer.h"
 #include "mailuser.h"
 #include "server.h"
+#include <sys/socket.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +25,31 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+// Have your program send the initial welcome message and immediately return.
+void greeting(int fd, struct utsname name) {
+  int error = uname(&name); // returns system information in the structure pointed to by buf
+  if (error == -1) {
+      return;
+  }
+  else {
+    char *msg = "220\r\n";
+    int len, bytes_sent;
+    len = strlen(msg);
+    bytes_sent = send_formatted(fd, msg);
+
+      if (bytes_sent == - 1) {
+          return;
+      } else {
+          char *msg = "220 %s simple mail transfer protocol ready\r\n";
+          int len = strlen(msg);
+          bytes_sent = send_formatted(fd, msg, len);
+          if (bytes_sent == - 1) {
+          return;
+          }
+      }
+  }
+}
+
 void handle_client(int fd) {
   
     char recvbuf[MAX_LINE_LENGTH + 1];
@@ -31,21 +57,9 @@ void handle_client(int fd) {
 
     struct utsname my_uname;
     uname(&my_uname);
-  
+
     /* TO BE COMPLETED BY THE STUDENT */
-    // connection message
-    send_formatted(fd, "220 Server is ready");
-    
-    // TODO extra parameters count as invalid syntax
-
-    // // max amount of parts is half taken up by spaces
-    // char parts[(MAX_LINE_LENGTH + 1) / 2];
-    // char * out;
-
-    // // read next line
-    // nb_read_line(nb, &out)
-    // // split line to tokens
-    // split(out, &parts);
+    greeting(fd, my_uname);
   
     nb_destroy(nb);
 }
