@@ -37,23 +37,12 @@ void greeting(int fd, struct utsname name)
     }
     else
     {
-        char *msg = "220 %s simple mail transfer protocol ready\r\n";
         int len, bytes_sent;
-        len = strlen(msg);
-        bytes_sent = send_formatted(fd, msg, name.__domainname);
+        bytes_sent = send_formatted(fd, "220 %s simple mail transfer protocol ready\r\n", name.nodename);
 
         if (bytes_sent == -1)
         {
             return;
-        }
-        else
-        {
-            //   char *msg = "220 %i simple mail transfer protocol ready\r\n";
-            //   int len = strlen(msg);
-            //   bytes_sent = send_formatted(fd, msg, len);
-            //   if (bytes_sent == - 1) {
-            //   return;
-            //   }
         }
     }
 }
