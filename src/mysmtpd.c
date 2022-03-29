@@ -44,14 +44,18 @@ void handle_client(int fd)
     while (nb_read_line(nb, recvbuf))
     {
         char *parts[(MAX_LINE_LENGTH + 1) / 2];
-        // todo check if nothing in there
-        split(recvbuf, parts);
+
+        int splitTimes = split(recvbuf, parts);
+        if (splitTimes <= 1) {
+            continue;
+        }
+        
         char * command = parts[0];
         printf("%s\n", command);
-        if (strcasecmp("NOOP", command)) {
+        if (strcasecmp("NOOP", command) == 0) {
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
-        } else if strcasecmp("QUIT", command) {
+        } else if (strcasecmp("QUIT", command) == 0) {
             send_formatted(fd, "221 OK\r\n");
             return;
         } else {
