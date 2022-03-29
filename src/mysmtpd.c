@@ -37,8 +37,9 @@ void greeting(int fd, struct utsname name)
     }
     else
     {
+        char msg[] = "220 %s simple mail transfer protocol ready\r\n";
         int len, bytes_sent;
-        bytes_sent = send_formatted(fd, "220 %s simple mail transfer protocol ready\r\n", name.nodename);
+        bytes_sent = send_formatted(fd, &msg, name.nodename);
 
         if (bytes_sent == -1)
         {
