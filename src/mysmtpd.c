@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/utsname.h>
 #include <ctype.h>
+#include <strings.h>
 
 #define MAX_LINE_LENGTH 1024
 
@@ -50,7 +51,7 @@ void handle_client(int fd)
         }
 
         char * command = parts[0];
-        printf("%s\n", command);
+        dlog("%s\n", command);
         if (strcasecmp("NOOP", command) == 0) {
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
