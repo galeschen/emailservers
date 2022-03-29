@@ -38,8 +38,8 @@ void handle_client(int fd)
 
     /* TO BE COMPLETED BY THE STUDENT */
     // welcome message
-    static char *msg = "220 %s simple mail transfer protocol ready\r\n";
-    send_formatted(fd, msg, my_uname.nodename);
+    char *welcome_msg = "220 %s simple mail transfer protocol ready\r\n";
+    send_formatted(fd, welcome_msg, my_uname.nodename);
 
     while (nb_read_line(nb, recvbuf))
     {
@@ -49,14 +49,15 @@ void handle_client(int fd)
         if (splitTimes <= 1) {
             continue;
         }
-        
+
         char * command = parts[0];
         printf("%s\n", command);
         if (strcasecmp("NOOP", command) == 0) {
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
-            send_formatted(fd, "221 OK\r\n");
+            char * msg = "221 OK\r\n";
+            send_formatted(fd, msg);
             return;
         } else {
             send_formatted(fd, "500\r\n");
