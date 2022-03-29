@@ -47,10 +47,12 @@ void handle_client(int fd)
         // todo check if nothing in there
         split(recvbuf, parts);
         char * command = parts[0];
-        if (strcasecmp("QUIT", command)) {
-            send_formatted(fd, "500");
-        } else {
-            send_formatted(fd, "500");
+        if (strcasecmp("NOOP", command)) {
+            // ignore extra params, still good
+            send_formatted(fd, "250 OK\r\n");
+        } else if strcasecmp("QUIT", command) {
+            send_formatted(fd, "221 OK\r\n");
+            return;
         }
     }
 
