@@ -33,6 +33,19 @@ void handle_client(int fd) {
     uname(&my_uname);
   
     /* TO BE COMPLETED BY THE STUDENT */
+    // connection message
+    send_formatted(fd, "220 Server is ready");
+    
+    // TODO extra parameters count as invalid syntax
+
+    // // max amount of parts is half taken up by spaces
+    // char parts[(MAX_LINE_LENGTH + 1) / 2];
+    // char * out;
+
+    // // read next line
+    // nb_read_line(nb, &out)
+    // // split line to tokens
+    // split(out, &parts);
   
     nb_destroy(nb);
 }
