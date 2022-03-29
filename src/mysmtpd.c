@@ -40,7 +40,7 @@ void greeting(int fd, struct utsname name) {
       if (bytes_sent == - 1) {
           return;
       } else {
-          char *msg = "220 %s simple mail transfer protocol ready\r\n";
+          char *msg = "220 %i simple mail transfer protocol ready\r\n";
           int len = strlen(msg);
           bytes_sent = send_formatted(fd, msg, len);
           if (bytes_sent == - 1) {
