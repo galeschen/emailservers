@@ -46,7 +46,7 @@ void handle_client(int fd)
     {
         char *parts[(MAX_LINE_LENGTH + 1) / 2];
 
-        int splitCount = split(recvbuf, parts);
+        int splitCount = split(recvbuf, &parts);
         dlog("%i\n", splitCount);
         if (splitCount <= 0) {
             continue;
