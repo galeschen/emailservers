@@ -42,12 +42,20 @@ void handle_client(int fd)
     char *welcome_msg = "220 %s simple mail transfer protocol ready\r\n";
     send_formatted(fd, welcome_msg, my_uname.nodename);
 
-    while (nb_read_line(nb, recvbuf))
+    while (1)
     {
+        int readlineVal = nb_read_line(nb, recvbuf);
+
+        //  -1 is error, 0 is we are done
+        if (readlineVal == 0 || readlineVal == -1) {
+            break;
+        }
+
         char *parts[(MAX_LINE_LENGTH + 1) / 2];
 
         int splitCount = split(recvbuf, &parts);
-        dlog("%i\n", splitCount);
+        dlog("%i\n", splitCount * 1);
+        
         if (splitCount <= 0) {
             continue;
         }
