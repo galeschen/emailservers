@@ -28,6 +28,37 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+// return 1 if email exists, else return 0
+int isEmailInFile(char* fileName, char * userName) {
+    FILE* fp;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    char * parts[2];
+    int userNameFound = 0;
+    // open users file
+    fp = fopen(fileName, "r");
+    if (fp == NULL)
+        exit(EXIT_FAILURE);
+
+    while ((read = getline(&line, &len, fp)) != -1) {
+        // assume user.txt always well formed
+        split(line, parts);
+        // @ added to ensure nothing funky happens at the end
+        if (strncasecmp(parts[0], userName + '@', strlen(userName) + 1) == 0) {
+            userNameFound = 1;
+            break;
+        }
+    }
+
+    fclose(fp);
+    if (line)
+        free(line);
+    exit(EXIT_SUCCESS);
+
+    return userNameFound;
+}
+
 void handle_client(int fd)
 {
 
@@ -64,8 +95,6 @@ void handle_client(int fd)
         dlog("%s\n", command);
 
 
-
-
         if (strcasecmp("NOOP", command) == 0) {
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
@@ -77,12 +106,12 @@ void handle_client(int fd)
         } else if (strcasecmp("EHLO", command) == 0) {
             send_formatted(fd, "250 %s\r\n", my_uname.nodename);
         } else if (strcasecmp("VRFY", command) == 0) {
+            // assume only need to check the user name part.
             if (isEmailInFile("users.txt", parts[1])) {
                 send_formatted(fd, "250 %s\r\n", parts[2]);
             } else {
                 send_formatted(fd, "550 %s\r\n", "user name does not exist");
             }
-            // go read users.txt see if email is in there
         } else {
             send_formatted(fd, "504 Command not recognized.\r\n");
         }
@@ -91,33 +120,3 @@ void handle_client(int fd)
     nb_destroy(nb);
 }
 
-// return 1 if email exists, else return 0
-void isEmailInFile(char* fileName, char * userName) {
-    FILE* fp;
-    char * line = NULL;
-    size_t len = 0;
-    ssize_t read;
-    char * parts[];
-    int userNameFound = 0;
-    // open users file
-    fp = fopen(fileName, "r");
-    if (fp == NULL)
-        exit(EXIT_FAILURE);
-
-    while ((read = getline(&line, &len, fp)) != -1) {
-        // assume user.txt always well formed
-        split(read, parts);
-        // @ added to ensure nothing funky happens at the end
-        if (strncasecmp(parts[0], userName + '@', strlen(userName) + 1) == 0) {
-            userNameFound = 1;
-            break;
-        }
-    }
-
-    fclose(fp);
-    if (line)
-        free(line);
-    exit(EXIT_SUCCESS);
-
-    return userNameFound;
-}
