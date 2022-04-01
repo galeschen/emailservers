@@ -53,7 +53,7 @@ void handle_client(int fd)
 
         char *parts[(MAX_LINE_LENGTH + 1) / 2];
 
-        int splitCount = split(recvbuf, &parts);
+        int splitCount = split(recvbuf, parts);
         dlog("%i\n", splitCount * 1);
         
         if (splitCount <= 0) {
@@ -66,8 +66,7 @@ void handle_client(int fd)
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
-            char * msg = "221 OK\r\n";
-            send_formatted(fd, msg);
+            send_formatted(fd, "221 OK\r\n");
             return;
         } else {
             send_formatted(fd, "500\r\n");
