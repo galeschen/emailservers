@@ -68,8 +68,12 @@ void handle_client(int fd)
         } else if (strcasecmp("QUIT", command) == 0) {
             send_formatted(fd, "221 OK\r\n");
             return;
+        } else if (strcasecmp("HELO", command) == 0) {
+            send_formatted(fd, "250 %s\r\n", my_uname.nodename);
+        } else if (strcasecmp("EHLO", command) == 0) {
+            send_formatted(fd, "250 %s\r\n", my_uname.nodename);
         } else {
-            send_formatted(fd, "500\r\n");
+            send_formatted(fd, "504 Command not recognized.\r\n");
         }
     }
 
