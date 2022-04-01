@@ -44,7 +44,8 @@ void handle_client(int fd)
 
     while (1)
     {
-        int readlineVal = nb_read_line(nb, recvbuf);
+        int readlineVal;
+        readlineVal = nb_read_line(nb, recvbuf);
 
         //  -1 is error, 0 is we are done
         if (readlineVal == 0 || readlineVal == -1) {
