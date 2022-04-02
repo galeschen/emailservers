@@ -182,7 +182,3 @@ void handle_client(int fd)
 
     nb_destroy(nb);
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> a118b709f69b32eade6d532e39e4a9da4b542c32
