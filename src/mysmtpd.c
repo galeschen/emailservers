@@ -109,7 +109,7 @@ void handle_client(int fd)
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
             send_formatted(fd, "221 OK\r\n");
-            save_mail(mail_data_buffer, )
+            // save_mail(mail_data_buffer, ) TODO
             return;
         } else if (strcasecmp("HELO", command) == 0) {
             send_formatted(fd, "250 %s\r\n", my_uname.nodename);
@@ -144,7 +144,7 @@ void handle_client(int fd)
             int str_len = str_len(parts[1]);
             char * str = malloc(str_len + 1);
             // 6 is length of "FROM:<"
-            strncpy(str, void*(parts[1]) + 6, str_len - 6 - 1);
+            strncpy(str, &parts[1] + 6, str_len - 6 - 1);
             add_user_to_list(reverse_users_list, str);
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("RCPT", command) == 0) {
@@ -153,7 +153,7 @@ void handle_client(int fd)
                 send_formatted(fd, "503 Bad sequence of commands\r\n");
 
             } else {
-                add_user_to_list(forward_users_list, parts[1])
+                add_user_to_list(forward_users_list, parts[1]);
                 send_formatted(fd, "250 OK\r\n");
             }
         } else if (strcasecmp("DATA", command) == 0) {
