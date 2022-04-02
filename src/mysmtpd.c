@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 }
 
 void send_invalid(int fd) {
-    send_formatted(fd, "500 Invalid command.\r\n");
+    send_formatted(fd, "501 Invalid command.\r\n");
 }
 
 void handle_client(int fd)
@@ -99,9 +99,16 @@ void handle_client(int fd)
             }
             for (int i = 0; i < splitCount; i++) {
                 // expand and copy string
-                char *str = malloc(strlen(mail_data_buffer) + strlen(parts[i]) + 1);
-                strcpy(str, mail_data_buffer);
-                strcat(str, parts[i]);
+                char *str;
+                if (mail_data_buffer == NULL) {
+                    // if mail buffer not initialized
+                    str = malloc(strlen(parts[i]) + 1);
+                    strcpy(str, parts[i]);
+                } else {
+                    str = malloc(strlen(mail_data_buffer) + strlen(parts[i]) + 1);
+                    strcpy(str, mail_data_buffer);
+                    strcat(str, parts[i]);
+                }
                 mail_data_buffer = str;
             }
         } else if (strcasecmp("NOOP", command) == 0) {
@@ -132,7 +139,11 @@ void handle_client(int fd)
             // from its argument clause into the reverse-path buffer.
 
             // format: "MAIL FROM:<reverse-path> [SP <mail-parameters> ] <CRLF>"
-            
+            if (splitCount < 2) {
+                send_invalid(fd);
+                continue;
+            }
+
             // free the paths.
             if (reverse_users_list)
                 destroy_user_list(reverse_users_list);
@@ -156,6 +167,11 @@ void handle_client(int fd)
 
         } else if (strcasecmp("RCPT", command) == 0) {
             // RCPT TO:<forward-path> [ SP <rcpt-parameters> ] <CRLF>
+            if (splitCount < 2) {
+                send_invalid(fd);
+                continue;
+            }
+
             if (reverse_users_list == NULL) {
                 send_formatted(fd, "503 %s Bad sequence of commands\r\n", domain);
             } else {
@@ -166,11 +182,15 @@ void handle_client(int fd)
                 add_user_to_list(&forward_users_list, str);
                 dlog("forward: %s\n", str);
 
-                send_formatted(fd, "250 OK %s\r\n", domain);
+                send_formatted(fd, "250 OK\r\n");
             }
         } else if (strcasecmp("DATA", command) == 0) {
+            if (reverse_users_list == NULL || forward_users_list == NULL) {
+                send_formatted(fd, "503 %s Bad sequence of commands\r\n", domain);
+                continue;
+            }
             data_mode = 1;
-            send_formatted(fd, "354 %s Enter mail, end with '.' on a line by itself.\r\n", domain);
+            send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
         } else if (strcasecmp("RSET", command) == 0) {
             // free the paths
             if (reverse_users_list)
