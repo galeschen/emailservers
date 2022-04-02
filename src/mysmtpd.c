@@ -44,6 +44,10 @@ int main(int argc, char *argv[])
 
 }
 
+void send_invalid(int fd) {
+    send_formatted(fd, "500 Invalid command.\r\n");
+}
+
 void handle_client(int fd)
 {
 
@@ -52,11 +56,12 @@ void handle_client(int fd)
 
     struct utsname my_uname;
     uname(&my_uname);
+    char * domain = my_uname.nodename;
 
     /* TO BE COMPLETED BY THE STUDENT */
     // welcome message
     char *welcome_msg = "220 %s simple mail transfer protocol ready\r\n";
-    send_formatted(fd, welcome_msg, my_uname.nodename);
+    send_formatted(fd, welcome_msg, domain);
 
     user_list_t reverse_users_list = NULL;
     user_list_t forward_users_list = NULL;
@@ -89,7 +94,7 @@ void handle_client(int fd)
             if (splitCount == 1 && strcasecmp(parts[0], ".") == 0) {
                 // end of data command
                 data_mode = 0;
-                send_formatted(fd, "250 Message accepted for delivery.\r\n");
+                send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
                 continue;
             }
             for (int i = 0; i < splitCount; i++) {
@@ -103,19 +108,23 @@ void handle_client(int fd)
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
-            send_formatted(fd, "221 OK %s\r\n", my_uname.nodename);
+            send_formatted(fd, "221 OK\r\n");
             // save_mail(mail_data_buffer, ) TODO
             return;
         } else if (strcasecmp("HELO", command) == 0) {
-            send_formatted(fd, "250 %s\r\n", my_uname.nodename);
+            send_formatted(fd, "250 %s\r\n", domain);
         } else if (strcasecmp("EHLO", command) == 0) {
-            send_formatted(fd, "250 %s\r\n", my_uname.nodename);
+            send_formatted(fd, "250 %s\r\n", domain);
         } else if (strcasecmp("VRFY", command) == 0) {
-            // assume only need to check the user name part.
-            if (is_valid_user(parts[1], NULL)) {
-                send_formatted(fd, "250 %s\r\n", parts[2]);
+            if (splitCount != 2) {
+                send_invalid(fd);
             } else {
-                send_formatted(fd, "550 %s\r\n", "user name does not exist");
+                char * username_and_domain = parts[1];
+                if (is_valid_user(username_and_domain, NULL)) {
+                    send_formatted(fd, "250 %s\r\n", username_and_domain);
+                } else {
+                    send_formatted(fd, "550 user name does not exist\r\n");
+                }
             }
         } else if (strcasecmp("MAIL", command) == 0) {
             // This command clears the reverse-path buffer, the forward-path buffer,
@@ -139,21 +148,21 @@ void handle_client(int fd)
             int str_len = strlen(parts[1]);
             char * str = malloc(str_len + 1);
             // 6 is length of "FROM:<"
-            strncpy(str, &parts[1] + 6, str_len - 6 - 1);
-            add_user_to_list(reverse_users_list, str);
-            send_formatted(fd, "250 OK\r\n");
+            strncpy(str, parts[1] + 6, str_len - 6 - 1);
+            add_user_to_list(&reverse_users_list, str);
+            send_formatted(fd, "250 OK %s\r\n", domain);
         } else if (strcasecmp("RCPT", command) == 0) {
             // RCPT TO:<forward-path> [ SP <rcpt-parameters> ] <CRLF>
             if (reverse_users_list == NULL) {
-                send_formatted(fd, "503 Bad sequence of commands\r\n");
+                send_formatted(fd, "503 %s Bad sequence of commands\r\n", domain);
 
             } else {
-                add_user_to_list(forward_users_list, parts[1]);
-                send_formatted(fd, "250 OK\r\n");
+                add_user_to_list(&forward_users_list, parts[1]);
+                send_formatted(fd, "250 OK %s\r\n", domain);
             }
         } else if (strcasecmp("DATA", command) == 0) {
             data_mode = 1;
-            send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
+            send_formatted(fd, "354 %s Enter mail, end with '.' on a line by itself.\r\n", domain);
         } else if (strcasecmp("RSET", command) == 0) {
             // free the paths
             if (reverse_users_list)
@@ -166,12 +175,12 @@ void handle_client(int fd)
                 free(mail_data_buffer);
             mail_data_buffer = NULL;
 
-            send_formatted(fd, "250 OK\r\n");
-        } else if (strcasecmp("EXPN", command == 0) || strcasecmp("HELP", command == 0)) {
-            send_formatted(fd, "502 Unsupported command.\r\n");
+            send_formatted(fd, "250 OK %s\r\n", domain);
+        } else if (strcasecmp("EXPN", command) == 0 || strcasecmp("HELP", command) == 0) {
+            send_formatted(fd, "502 %s Unsupported command.\r\n", domain);
             
         } else {
-            send_formatted(fd, "500 Invalid command.\r\n");
+            send_formatted(fd, "500 %s Invalid command.\r\n", domain);
         }
     }
 
