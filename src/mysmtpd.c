@@ -69,8 +69,8 @@ void handle_client(int fd)
     user_list_t reverse_users_list = NULL;
     user_list_t forward_users_list = NULL;
     
-    FILE * temp_file = NULL;
-    char filename[] = "tempfile-XXXXXX";
+    FILE * temp_file_stream = NULL;
+    char file_name[] = "tempfile-XXXXXX";
     
     int data_mode = 0;
     int sent_helo = 0;
@@ -88,16 +88,16 @@ void handle_client(int fd)
                 // end of data command
                 data_mode = 0;
                 // send the mail
-                save_user_mail(filename, forward_users_list);
+                save_user_mail(file_name, forward_users_list);
                 
                 // delete file
-                unlink(filename);
-                fclose(temp_file);
-                temp_file = NULL;
+                unlink(file_name);
+                fclose(temp_file_stream);
+                temp_file_stream = NULL;
 
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
             } else {
-                int p = fputs(recvbuf, temp_file);
+                int p = fputs(recvbuf, temp_file_stream);
                 if (p == EOF) dlog("error\n");
             }
             continue;
@@ -209,9 +209,9 @@ void handle_client(int fd)
 
             // setup new file
             data_mode = 1;
-            strcpy(filename, "tempfile-XXXXXX");
-            int fd = mkstemp(filename);
-            temp_file = fdopen(fd, "w");
+            strcpy(file_name, "tempfile-XXXXXX");
+            int fd_temp = mkstemp(file_name);
+            temp_file_stream = fopen(fd_temp, "w");
 
             send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
         } else if (strcasecmp("RSET", command) == 0) {
