@@ -189,19 +189,25 @@ void handle_client(int fd)
             if (reverse_users_list == NULL) {
                 send_formatted(fd, "503 %s Bad sequence of commands\r\n", domain);
             } else {
-                // 6 is length of "TO:<"
-                int str_len = strlen(parts[1]);
-                char * str = malloc(str_len + 1);
-                strncpy(str, parts[1] + 4, str_len - 4 - 1);
-                dlog("forward: %s\n", str);
+                // check second param
+                if (strncasecmp("TO:<", userAddress, 4) == 0
+                && strncasecmp(">", userAddress + strlen(userAddress) - 2, 1) == 0) {
+                    // 6 is length of "TO:<"
+                    int str_len = strlen(parts[1]);
+                    char * str = malloc(str_len + 1);
+                    strncpy(str, parts[1] + 4, str_len - 4 - 1);
+                    dlog("forward: %s\n", str);
 
-                if (is_valid_user(str, NULL)) {
-                    add_user_to_list(&forward_users_list, str);
-                    send_formatted(fd, "250 OK\r\n");
+                    if (is_valid_user(str, NULL)) {
+                        add_user_to_list(&forward_users_list, str);
+                        send_formatted(fd, "250 OK\r\n");
+                    } else {
+                        send_formatted(fd, "550 user name does not exist\r\n");
+                    }
+                    free(str);
                 } else {
-                    send_formatted(fd, "550 user name does not exist\r\n");
+                    send_invalid(fd);
                 }
-                free(str);
             }
         } else if (strcasecmp("DATA", command) == 0) {
             if (reverse_users_list == NULL || forward_users_list == NULL) {
