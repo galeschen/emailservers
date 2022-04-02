@@ -84,7 +84,7 @@ void handle_client(int fd)
         }
 
         if (data_mode) {
-            if (strcasecmp(recvbuf, ".") == 0) {
+            if (strcasecmp(recvbuf, ".\r\n") == 0) {
                 // end of data command
                 data_mode = 0;
                 // send the mail
