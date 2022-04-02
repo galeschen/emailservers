@@ -99,15 +99,14 @@ void handle_client(int fd)
         int splitCount = split(recvbuf, parts);
         dlog("%i\n", splitCount * 1);
         
-        if (splitCount <= 0) {
+        char * command = parts[0];
+
+        if (command == NULL) {
             if (data_mode) {
                 append_to_buffer(mail_data_buffer, "\n");
             }
             continue;
         }
-
-        char * command = parts[0];
-        dlog("%s\n", command);
 
         if (data_mode) {
             if (splitCount == 1 && strcasecmp(parts[0], ".") == 0) {
@@ -168,9 +167,10 @@ void handle_client(int fd)
             int str_len = strlen(parts[1]);
             char * str = malloc(str_len + 1);
             strncpy(str, parts[1] + 6, str_len - 6 - 1);
+
             add_user_to_list(&reverse_users_list, str);
-            free(str);
             dlog("recieve: %s\n", str);
+            free(str);
 
             send_formatted(fd, "250 OK\r\n");
 
