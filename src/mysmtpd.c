@@ -29,19 +29,24 @@ int main(int argc, char *argv[])
 }
 
 
- int save_mail(char * buffer, user_list_t recievers) {
+int save_mail(char * buffer, user_list_t recievers) {
 
     // write to temp file
-    char fileName[7];
-    int fd = mkstemp(fileName);
-    if (write(fd, buffer, strlen(buffer)) == -1) {
+    char filename[] = "tempfile-XXXXXX";
+    int fd;
+    if ((fd = mkstemp(filename)) == -1) {
         return -1;
-    } 
+    }
+    FILE *fh = fdopen(fd, "w");
+    fprintf(fh, buffer);
 
-    save_user_mail(fileName, recievers);
-    destroy_user_list(recievers);
+    save_user_mail(filename, recievers);
+
+    // close file will be deleted
+    unlink(filename);
+    fclose(fh);
+
     return 0;
-
 }
 
 void send_invalid(int fd) {
@@ -129,7 +134,7 @@ void handle_client(int fd)
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
             send_formatted(fd, "221 OK\r\n");
-            // save_mail(mail_data_buffer, ) TODO
+            save_mail(mail_data_buffer, forward_users_list);
             return;
         } else if (strcasecmp("HELO", command) == 0 || strcasecmp("EHLO", command) == 0) {
             sent_helo = 1;
@@ -151,10 +156,13 @@ void handle_client(int fd)
             // from its argument clause into the reverse-path buffer.
 
             // format: "MAIL FROM:<reverse-path> [SP <mail-parameters> ] <CRLF>"
+            // helo must be sent first
             if (sent_helo == 0) {
                 send_out_of_order(fd);
+                continue;
             }
             
+            // check for 1 param only
             if (splitCount != 2) {
                 send_invalid(fd);
                 continue;
@@ -186,9 +194,9 @@ void handle_client(int fd)
             // RCPT TO:<forward-path> [ SP <rcpt-parameters> ] <CRLF>
             if (sent_helo == 0) {
                 send_out_of_order(fd);
+                continue;
             }
 
-            
             if (splitCount < 2) {
                 send_invalid(fd);
                 continue;
@@ -212,10 +220,12 @@ void handle_client(int fd)
                 free(str);
             }
         } else if (strcasecmp("DATA", command) == 0) {
+
             if (reverse_users_list == NULL || forward_users_list == NULL) {
                 send_out_of_order(fd);
                 continue;
             }
+
             data_mode = 1;
             send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
         } else if (strcasecmp("RSET", command) == 0) {
