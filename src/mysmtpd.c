@@ -85,9 +85,8 @@ void handle_client(int fd)
         char * command = parts[0];
         dlog("%s\n", command);
 
-
         if (data_mode) {
-            if (splitCount == 1 && strcasecmp(parts[0],'.') == 0) {
+            if (splitCount == 1 && strcasecmp(parts[0], ".") == 0) {
                 // end of data command
                 data_mode = 0;
                 send_formatted(fd, "250 Message accepted for delivery.\r\n");
@@ -104,7 +103,7 @@ void handle_client(int fd)
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
-            send_formatted(fd, "221 OK\r\n");
+            send_formatted(fd, "221 OK %s\r\n", my_uname.nodename);
             // save_mail(mail_data_buffer, ) TODO
             return;
         } else if (strcasecmp("HELO", command) == 0) {
