@@ -148,7 +148,7 @@ void handle_client(int fd)
             int str_len = strlen(parts[1]);
             char * str = malloc(str_len + 1);
             // 6 is length of "FROM:<"
-            strncpy(str, parts[1] + 6, str_len - 6 - 1);
+            strncpy(str, parts[1] + 5, str_len - 6);
             add_user_to_list(&reverse_users_list, str);
             dlog("recieve: %s\n", str);
             send_formatted(fd, "250 OK\r\n");
