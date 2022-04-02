@@ -164,7 +164,8 @@ void handle_client(int fd)
 
             char * userAddress = parts[1];
             // check if second param is formatted FROM:<!!!>
-            if (strncasecmp("FROM:<", userAddress, 6) && strncasecmp(">", userAddress + strlen(userAddress) - 2, 1)) {
+            if (strncasecmp("FROM:<", userAddress, 6) == 0
+                && strncasecmp(">", userAddress + strlen(userAddress) - 2, 1) == 0) {
                 // 6 is length of "FROM:<"
                 int str_len = strlen(userAddress);
                 char * str = malloc(str_len + 1);
