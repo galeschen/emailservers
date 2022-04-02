@@ -58,9 +58,9 @@ void handle_client(int fd)
     char *welcome_msg = "220 %s simple mail transfer protocol ready\r\n";
     send_formatted(fd, welcome_msg, my_uname.nodename);
 
-    char * reverse_users_list = NULL;
+    user_list_t reverse_users_list = NULL;
     user_list_t forward_users_list = NULL;
-    user_list_t mail_data_buffer = NULL;
+    char * mail_data_buffer = NULL;
     int data_mode = 0;
 
     while (1)
@@ -87,7 +87,7 @@ void handle_client(int fd)
 
 
         if (data_mode) {
-            if (splitCount == 1 && parts[0] == '.') {
+            if (splitCount == 1 && strcasecmp(parts[0],'.') == 0) {
                 // end of data command
                 data_mode = 0;
                 send_formatted(fd, "250 Message accepted for delivery.\r\n");
