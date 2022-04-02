@@ -37,15 +37,14 @@ int save_mail(char * buffer, user_list_t recievers) {
     if ((fd = mkstemp(filename)) == -1) {
         return -1;
     }
-    FILE *fh = fdopen(fd, "w");
-    fprintf(fh, buffer);
+    if (write(fd, buffer, strlen(buffer)) == -1) {
+        return -1;
+    } 
 
     save_user_mail(filename, recievers);
 
     // close file will be deleted
     unlink(filename);
-    fclose(fh);
-
     return 0;
 }
 
@@ -123,6 +122,8 @@ void handle_client(int fd)
             if (splitCount == 1 && strcasecmp(parts[0], ".") == 0) {
                 // end of data command
                 data_mode = 0;
+                // send the mail
+                save_mail(mail_data_buffer, forward_users_list);
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
                 continue;
             }
@@ -134,9 +135,6 @@ void handle_client(int fd)
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
             send_formatted(fd, "221 OK\r\n");
-            if (mail_data_buffer)
-                // send the mail on quit if there is any mail
-                save_mail(mail_data_buffer, forward_users_list);
             break;
         } else if (strcasecmp("HELO", command) == 0 || strcasecmp("EHLO", command) == 0) {
             sent_helo = 1;
