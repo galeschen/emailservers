@@ -48,6 +48,22 @@ void send_invalid(int fd) {
     send_formatted(fd, "501 Invalid command.\r\n");
 }
 
+void append_to_buffer(char * buffer, char * new_str) {
+    // expand and copy string
+    char *str;
+    if (buffer == NULL) {
+        // if mail buffer not initialized
+        str = malloc(strlen(new_str) + 1);
+        strcpy(str, new_str);
+    } else {
+        str = malloc(strlen(buffer) + strlen(new_str) + 1);
+        strcpy(str, buffer);
+        strcat(str, new_str);
+    }
+    buffer = str;
+}
+
+
 void handle_client(int fd)
 {
 
@@ -84,6 +100,9 @@ void handle_client(int fd)
         dlog("%i\n", splitCount * 1);
         
         if (splitCount <= 0) {
+            if (data_mode) {
+                append_to_buffer(mail_data_buffer, "\n");
+            }
             continue;
         }
 
@@ -98,18 +117,7 @@ void handle_client(int fd)
                 continue;
             }
             for (int i = 0; i < splitCount; i++) {
-                // expand and copy string
-                char *str;
-                if (mail_data_buffer == NULL) {
-                    // if mail buffer not initialized
-                    str = malloc(strlen(parts[i]) + 1);
-                    strcpy(str, parts[i]);
-                } else {
-                    str = malloc(strlen(mail_data_buffer) + strlen(parts[i]) + 1);
-                    strcpy(str, mail_data_buffer);
-                    strcat(str, parts[i]);
-                }
-                mail_data_buffer = str;
+                append_to_buffer(mail_data_buffer, parts[i]);
             }
         } else if (strcasecmp("NOOP", command) == 0) {
             // ignore extra params, still good
@@ -139,7 +147,7 @@ void handle_client(int fd)
             // from its argument clause into the reverse-path buffer.
 
             // format: "MAIL FROM:<reverse-path> [SP <mail-parameters> ] <CRLF>"
-            if (splitCount < 2) {
+            if (splitCount != 2) {
                 send_invalid(fd);
                 continue;
             }
@@ -161,6 +169,7 @@ void handle_client(int fd)
             char * str = malloc(str_len + 1);
             strncpy(str, parts[1] + 6, str_len - 6 - 1);
             add_user_to_list(&reverse_users_list, str);
+            free(str);
             dlog("recieve: %s\n", str);
 
             send_formatted(fd, "250 OK\r\n");
@@ -179,10 +188,15 @@ void handle_client(int fd)
                 int str_len = strlen(parts[1]);
                 char * str = malloc(str_len + 1);
                 strncpy(str, parts[1] + 4, str_len - 4 - 1);
-                add_user_to_list(&forward_users_list, str);
                 dlog("forward: %s\n", str);
 
-                send_formatted(fd, "250 OK\r\n");
+                if (is_valid_user(str, NULL)) {
+                    add_user_to_list(&forward_users_list, str);
+                    send_formatted(fd, "250 OK\r\n");
+                } else {
+                    send_formatted(fd, "550 user name does not exist\r\n");
+                }
+                free(str);
             }
         } else if (strcasecmp("DATA", command) == 0) {
             if (reverse_users_list == NULL || forward_users_list == NULL) {
@@ -192,6 +206,12 @@ void handle_client(int fd)
             data_mode = 1;
             send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
         } else if (strcasecmp("RSET", command) == 0) {
+            
+            if (splitCount != 1) {
+                send_invalid(fd);
+                continue;
+            }
+
             // free the paths
             if (reverse_users_list)
                 destroy_user_list(reverse_users_list);
