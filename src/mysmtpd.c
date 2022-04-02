@@ -99,9 +99,9 @@ void handle_client(int fd)
             }
             for (int i = 0; i < splitCount; i++) {
                 // expand and copy string
-                char *str = malloc(strlen(mail_data_buffer) + strlen(parts[i]) + 1)
-                strcpy(str, mail_data_buffer)
-                strcat(str, parts[i])
+                char *str = malloc(strlen(mail_data_buffer) + strlen(parts[i]) + 1);
+                strcpy(str, mail_data_buffer);
+                strcat(str, parts[i]);
                 mail_data_buffer = str;
             }
         } else if (strcasecmp("NOOP", command) == 0) {
@@ -141,7 +141,7 @@ void handle_client(int fd)
             mail_data_buffer = NULL;
 
 
-            int str_len = str_len(parts[1]);
+            int str_len = strlen(parts[1]);
             char * str = malloc(str_len + 1);
             // 6 is length of "FROM:<"
             strncpy(str, &parts[1] + 6, str_len - 6 - 1);
