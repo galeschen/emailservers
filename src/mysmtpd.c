@@ -208,7 +208,7 @@ void handle_client(int fd)
 
             // setup new file
             data_mode = 1;
-            strcpy(filename, "tempfile-XXXXXX")
+            strcpy(filename, "tempfile-XXXXXX");
             int fd = mkstemp(filename));
             temp_file = fdopen(fd, "w");
 
