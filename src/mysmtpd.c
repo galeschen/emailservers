@@ -256,4 +256,5 @@ void handle_client(int fd)
     }
 
     nb_destroy(nb);
+    return;
 }
