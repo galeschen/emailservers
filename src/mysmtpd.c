@@ -145,20 +145,27 @@ void handle_client(int fd)
             mail_data_buffer = NULL;
 
 
+            // 6 is length of "FROM:<"
             int str_len = strlen(parts[1]);
             char * str = malloc(str_len + 1);
-            // 6 is length of "FROM:<"
             strncpy(str, parts[1] + 6, str_len - 6 - 1);
             add_user_to_list(&reverse_users_list, str);
             dlog("recieve: %s\n", str);
+
             send_formatted(fd, "250 OK\r\n");
+
         } else if (strcasecmp("RCPT", command) == 0) {
             // RCPT TO:<forward-path> [ SP <rcpt-parameters> ] <CRLF>
             if (reverse_users_list == NULL) {
                 send_formatted(fd, "503 %s Bad sequence of commands\r\n", domain);
-
             } else {
-                add_user_to_list(&forward_users_list, parts[1]);
+                // 6 is length of "TO:<"
+                int str_len = strlen(parts[1]);
+                char * str = malloc(str_len + 1);
+                strncpy(str, parts[1] + 4, str_len - 4 - 1);
+                add_user_to_list(&forward_users_list, str);
+                dlog("forward: %s\n", str);
+
                 send_formatted(fd, "250 OK %s\r\n", domain);
             }
         } else if (strcasecmp("DATA", command) == 0) {
