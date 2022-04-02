@@ -134,8 +134,10 @@ void handle_client(int fd)
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
             send_formatted(fd, "221 OK\r\n");
-            save_mail(mail_data_buffer, forward_users_list);
-            return;
+            if (mail_data_buffer)
+                // send the mail on quit if there is any mail
+                save_mail(mail_data_buffer, forward_users_list);
+            break;
         } else if (strcasecmp("HELO", command) == 0 || strcasecmp("EHLO", command) == 0) {
             sent_helo = 1;
             send_formatted(fd, "250 %s\r\n", domain);
