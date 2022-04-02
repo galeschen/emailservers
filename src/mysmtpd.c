@@ -28,26 +28,6 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
-int save_mail(char * buffer, user_list_t recievers) {
-
-    // write to temp file
-    char filename[] = "tempfile-XXXXXX";
-    int fd;
-    if ((fd = mkstemp(filename)) == -1) {
-        return -1;
-    }
-    if (write(fd, buffer, strlen(buffer)) == -1) {
-        return -1;
-    } 
-
-    save_user_mail(filename, recievers);
-
-    // close file will be deleted
-    unlink(filename);
-    return 0;
-}
-
 void send_invalid(int fd) {
     send_formatted(fd, "501 Invalid command.\r\n");
 }
@@ -88,7 +68,10 @@ void handle_client(int fd)
 
     user_list_t reverse_users_list = NULL;
     user_list_t forward_users_list = NULL;
-    char * mail_data_buffer = NULL;
+    
+    FILE * temp_file = NULL;
+    char filename[] = "tempfile-XXXXXX";
+    
     int data_mode = 0;
     int sent_helo = 0;
 
@@ -105,10 +88,16 @@ void handle_client(int fd)
                 // end of data command
                 data_mode = 0;
                 // send the mail
-                save_mail(mail_data_buffer, forward_users_list);
+                save_user_mail(filename, forward_users_list);
+                
+                // delete file
+                unlink(filename);
+                fclose(temp_file);
+                temp_file = NULL
+
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
             } else {
-                append_to_buffer(mail_data_buffer, recvbuf);
+                fputs(recvbuf, temp_file);
             }
             continue;
         }
@@ -169,9 +158,6 @@ void handle_client(int fd)
             if (forward_users_list)
                 destroy_user_list(forward_users_list);
             forward_users_list = NULL;
-            if (mail_data_buffer)
-                free(mail_data_buffer);
-            mail_data_buffer = NULL;
 
             // 6 is length of "FROM:<"
             int str_len = strlen(parts[1]);
@@ -220,7 +206,12 @@ void handle_client(int fd)
                 continue;
             }
 
+            // setup new file
             data_mode = 1;
+            filename = "tempfile-XXXXXX";
+            int fd = mkstemp(filename));
+            temp_file = fdopen(fd, "w");
+
             send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
         } else if (strcasecmp("RSET", command) == 0) {
             
@@ -236,14 +227,10 @@ void handle_client(int fd)
             if (forward_users_list)
                 destroy_user_list(forward_users_list);
             forward_users_list = NULL;
-            if (mail_data_buffer)
-                free(mail_data_buffer);
-            mail_data_buffer = NULL;
 
             send_formatted(fd, "250 OK %s\r\n", domain);
         } else if (strcasecmp("EXPN", command) == 0 || strcasecmp("HELP", command) == 0) {
             send_formatted(fd, "502 %s Unsupported command.\r\n", domain);
-            
         } else {
             send_formatted(fd, "500 %s Invalid command.\r\n", domain);
         }
