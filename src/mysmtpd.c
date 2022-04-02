@@ -37,7 +37,8 @@ int main(int argc, char *argv[])
     }
 
     // write to temp file
-    int fd = mkstemp();
+    char fileName[7];
+    int fd = mkstemp(fileName);
     if (write(fd, buffer, strlen(buffer)) == -1) {
         return -1;
     } 
