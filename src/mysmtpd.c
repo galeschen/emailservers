@@ -162,18 +162,22 @@ void handle_client(int fd)
                 free(mail_data_buffer);
             mail_data_buffer = NULL;
 
+            char * userAddress = parts[1];
+            // check if second param is formatted FROM:<!!!>
+            if (strncasecmp("FROM:<", userAddress, 6) && strncasecmp(">", userAddress + strlen(userAddress) - 2, 1)) {
+                // 6 is length of "FROM:<"
+                int str_len = strlen(userAddress);
+                char * str = malloc(str_len + 1);
+                strncpy(str, userAddress + 6, str_len - 6 - 1);
 
-            // 6 is length of "FROM:<"
-            int str_len = strlen(parts[1]);
-            char * str = malloc(str_len + 1);
-            strncpy(str, parts[1] + 6, str_len - 6 - 1);
+                add_user_to_list(&reverse_users_list, str);
+                dlog("recieve: %s\n", str);
+                free(str);
 
-            add_user_to_list(&reverse_users_list, str);
-            dlog("recieve: %s\n", str);
-            free(str);
-
-            send_formatted(fd, "250 OK\r\n");
-
+                send_formatted(fd, "250 OK\r\n");
+            } else {
+                send_invalid(fd);
+            }
         } else if (strcasecmp("RCPT", command) == 0) {
             // RCPT TO:<forward-path> [ SP <rcpt-parameters> ] <CRLF>
             if (splitCount < 2) {
