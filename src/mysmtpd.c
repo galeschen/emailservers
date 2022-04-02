@@ -211,7 +211,7 @@ void handle_client(int fd)
             data_mode = 1;
             strcpy(file_name, "tempfile-XXXXXX");
             int fd_temp = mkstemp(file_name);
-            temp_file_stream = fopen(fd_temp, "w");
+            temp_file_stream = fdopen(fd_temp, "w");
 
             send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
         } else if (strcasecmp("RSET", command) == 0) {
