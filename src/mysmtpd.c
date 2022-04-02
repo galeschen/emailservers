@@ -29,12 +29,7 @@ int main(int argc, char *argv[])
 }
 
 
- int save_mail(char * buffer, user_list_t users, int users_count) {
-
-    user_list_t recievers = create_user_list();
-    for (int i = 0; i < users_count; i++) {
-        add_user_to_list(recievers, users[i]);
-    }
+ int save_mail(char * buffer, user_list_t recievers) {
 
     // write to temp file
     char fileName[7];
