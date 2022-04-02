@@ -93,7 +93,7 @@ void handle_client(int fd)
                 // delete file
                 unlink(filename);
                 fclose(temp_file);
-                temp_file = NULL
+                temp_file = NULL;
 
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
             } else {
@@ -208,7 +208,7 @@ void handle_client(int fd)
 
             // setup new file
             data_mode = 1;
-            filename = "tempfile-XXXXXX";
+            strcpy(filename, "tempfile-XXXXXX")
             int fd = mkstemp(filename));
             temp_file = fdopen(fd, "w");
 
