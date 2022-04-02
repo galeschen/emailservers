@@ -97,7 +97,8 @@ void handle_client(int fd)
 
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
             } else {
-                fputs(recvbuf, temp_file);
+                int p = fputs(recvbuf, temp_file);
+                if (p == EOF) dlog("error\n");
             }
             continue;
         }
