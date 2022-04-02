@@ -48,6 +48,10 @@ void send_invalid(int fd) {
     send_formatted(fd, "501 Invalid command.\r\n");
 }
 
+void send_out_of_order(int fd) {
+    send_formatted(fd, "503 Bad sequence of commands\r\n");
+}
+
 void append_to_buffer(char * buffer, char * new_str) {
     // expand and copy string
     char *str;
@@ -82,7 +86,9 @@ void handle_client(int fd)
     user_list_t reverse_users_list = NULL;
     user_list_t forward_users_list = NULL;
     char * mail_data_buffer = NULL;
+
     int data_mode = 0;
+    int sent_helo = 0;
 
     while (1)
     {
@@ -125,9 +131,8 @@ void handle_client(int fd)
             send_formatted(fd, "221 OK\r\n");
             // save_mail(mail_data_buffer, ) TODO
             return;
-        } else if (strcasecmp("HELO", command) == 0) {
-            send_formatted(fd, "250 %s\r\n", domain);
-        } else if (strcasecmp("EHLO", command) == 0) {
+        } else if (strcasecmp("HELO", command) == 0 || strcasecmp("EHLO", command) == 0) {
+            sent_helo = 1;
             send_formatted(fd, "250 %s\r\n", domain);
         } else if (strcasecmp("VRFY", command) == 0) {
             if (splitCount != 2) {
@@ -146,6 +151,10 @@ void handle_client(int fd)
             // from its argument clause into the reverse-path buffer.
 
             // format: "MAIL FROM:<reverse-path> [SP <mail-parameters> ] <CRLF>"
+            if (sent_helo == 0) {
+                send_out_of_order(fd);
+            }
+            
             if (splitCount != 2) {
                 send_invalid(fd);
                 continue;
@@ -162,56 +171,49 @@ void handle_client(int fd)
                 free(mail_data_buffer);
             mail_data_buffer = NULL;
 
-            char * userAddress = parts[1];
-            // check if second param is formatted FROM:<!!!>
-            if (strncasecmp("FROM:<", userAddress, 6) == 0
-                && strncasecmp(">", userAddress + strlen(userAddress) - 2, 1) == 0) {
-                // 6 is length of "FROM:<"
-                int str_len = strlen(userAddress);
-                char * str = malloc(str_len + 1);
-                strncpy(str, userAddress + 6, str_len - 6 - 1);
+            // 6 is length of "FROM:<"
+            int str_len = strlen(parts[1]);
+            char * str = malloc(str_len + 1);
+            strncpy(str, parts[1] + 6, str_len - 6 - 1);
 
-                add_user_to_list(&reverse_users_list, str);
-                dlog("recieve: %s\n", str);
-                free(str);
+            add_user_to_list(&reverse_users_list, str);
+            dlog("recieve: %s\n", str);
+            free(str);
 
-                send_formatted(fd, "250 OK\r\n");
-            } else {
-                send_invalid(fd);
-            }
+            send_formatted(fd, "250 OK\r\n");
+
         } else if (strcasecmp("RCPT", command) == 0) {
             // RCPT TO:<forward-path> [ SP <rcpt-parameters> ] <CRLF>
+            if (sent_helo == 0) {
+                send_out_of_order(fd);
+            }
+
+            
             if (splitCount < 2) {
                 send_invalid(fd);
                 continue;
             }
 
             if (reverse_users_list == NULL) {
-                send_formatted(fd, "503 %s Bad sequence of commands\r\n", domain);
+                send_out_of_order(fd);
             } else {
-                // check second param
-                if (strncasecmp("TO:<", userAddress, 4) == 0
-                && strncasecmp(">", userAddress + strlen(userAddress) - 2, 1) == 0) {
-                    // 6 is length of "TO:<"
-                    int str_len = strlen(parts[1]);
-                    char * str = malloc(str_len + 1);
-                    strncpy(str, parts[1] + 4, str_len - 4 - 1);
-                    dlog("forward: %s\n", str);
+                // 6 is length of "TO:<"
+                int str_len = strlen(parts[1]);
+                char * str = malloc(str_len + 1);
+                strncpy(str, parts[1] + 4, str_len - 4 - 1);
+                dlog("forward: %s\n", str);
 
-                    if (is_valid_user(str, NULL)) {
-                        add_user_to_list(&forward_users_list, str);
-                        send_formatted(fd, "250 OK\r\n");
-                    } else {
-                        send_formatted(fd, "550 user name does not exist\r\n");
-                    }
-                    free(str);
+                if (is_valid_user(str, NULL)) {
+                    add_user_to_list(&forward_users_list, str);
+                    send_formatted(fd, "250 OK\r\n");
                 } else {
-                    send_invalid(fd);
+                    send_formatted(fd, "550 user name does not exist\r\n");
                 }
+                free(str);
             }
         } else if (strcasecmp("DATA", command) == 0) {
             if (reverse_users_list == NULL || forward_users_list == NULL) {
-                send_formatted(fd, "503 %s Bad sequence of commands\r\n", domain);
+                send_out_of_order(fd);
                 continue;
             }
             data_mode = 1;
