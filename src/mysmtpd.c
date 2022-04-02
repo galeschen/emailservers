@@ -82,7 +82,6 @@ void handle_client(int fd)
     uname(&my_uname);
     char * domain = my_uname.nodename;
 
-    /* TO BE COMPLETED BY THE STUDENT */
     // welcome message
     char *welcome_msg = "220 %s simple mail transfer protocol ready\r\n";
     send_formatted(fd, welcome_msg, domain);
@@ -90,21 +89,31 @@ void handle_client(int fd)
     user_list_t reverse_users_list = NULL;
     user_list_t forward_users_list = NULL;
     char * mail_data_buffer = NULL;
-
     int data_mode = 0;
     int sent_helo = 0;
 
     while (1)
     {
-        int readlineVal;
-        readlineVal = nb_read_line(nb, recvbuf);
-
         //  -1 is error, 0 is we are done
+        int readlineVal = nb_read_line(nb, recvbuf);
         if (readlineVal == 0 || readlineVal == -1) {
             break;
         }
 
-        char *parts[(MAX_LINE_LENGTH + 1) / 2];
+        if (data_mode) {
+            if (strcasecmp(recvbuf, ".") == 0) {
+                // end of data command
+                data_mode = 0;
+                // send the mail
+                save_mail(mail_data_buffer, forward_users_list);
+                send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
+            } else {
+                append_to_buffer(mail_data_buffer, recvbuf);
+            }
+            continue;
+        }
+
+        char * parts[(MAX_LINE_LENGTH + 1) / 2];
 
         int splitCount = split(recvbuf, parts);
         dlog("%i\n", splitCount * 1);
@@ -112,25 +121,10 @@ void handle_client(int fd)
         char * command = parts[0];
 
         if (command == NULL) {
-            if (data_mode) {
-                append_to_buffer(mail_data_buffer, "\n");
-            }
             continue;
         }
 
-        if (data_mode) {
-            if (splitCount == 1 && strcasecmp(parts[0], ".") == 0) {
-                // end of data command
-                data_mode = 0;
-                // send the mail
-                save_mail(mail_data_buffer, forward_users_list);
-                send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
-                continue;
-            }
-            for (int i = 0; i < splitCount; i++) {
-                append_to_buffer(mail_data_buffer, parts[i]);
-            }
-        } else if (strcasecmp("NOOP", command) == 0) {
+        if (strcasecmp("NOOP", command) == 0) {
             // ignore extra params, still good
             send_formatted(fd, "250 OK\r\n");
         } else if (strcasecmp("QUIT", command) == 0) {
