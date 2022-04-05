@@ -165,7 +165,7 @@ void handle_client(int fd)
 
             // 6 is length of "FROM:<"
             int str_len = strlen(parts[1]);
-            char * str = malloc(str_len + 1);
+            char * str = malloc(str_len - 6 - 1);
             strncpy(str, parts[1] + 6, str_len - 6 - 1);
 
             add_user_to_list(&reverse_users_list, str);
@@ -191,7 +191,7 @@ void handle_client(int fd)
             } else {
                 // 6 is length of "TO:<"
                 int str_len = strlen(parts[1]);
-                char * str = malloc(str_len + 1);
+                char * str = malloc(str_len - 4 - 1);
                 strncpy(str, parts[1] + 4, str_len - 4 - 1);
                 dlog("forward: %s, str_len %i\n", str, str_len);
 
