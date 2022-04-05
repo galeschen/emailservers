@@ -87,12 +87,13 @@ void handle_client(int fd)
             if (strcasecmp(recvbuf, ".\r\n") == 0) {
                 // end of data command
                 data_mode = 0;
+                fclose(temp_file_stream);
+
                 // send the mail
                 save_user_mail(file_name, forward_users_list);
                 
                 // delete file
                 unlink(file_name);
-                fclose(temp_file_stream);
                 temp_file_stream = NULL;
 
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
