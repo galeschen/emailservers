@@ -191,7 +191,7 @@ void handle_client(int fd)
             } else {
                 // 6 is length of "TO:<"
                 int str_len = strlen(parts[1]);
-                char * str = calloc(str_len - 4);
+                char * str = calloc(str_len - 4, 1);
                 strncpy(str, parts[1] + 4, str_len - 4 - 1);
                 dlog("forward: %s, str_len %i %i\n", str, str_len, str_len - 4 - 1);
 
