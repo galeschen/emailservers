@@ -70,6 +70,7 @@ void handle_client(int fd)
     user_list_t forward_users_list = NULL;
     
     FILE * temp_file_stream = NULL;
+    int temp_fd;
     char file_name[] = "tempfile-XXXXXX";
     
     int data_mode = 0;
@@ -87,9 +88,8 @@ void handle_client(int fd)
             if (strcasecmp(recvbuf, ".\r\n") == 0) {
                 // end of data command
                 data_mode = 0;
-                fclose(temp_file_stream);
-
                 // send the mail
+                close(temp_fd);
                 save_user_mail(file_name, forward_users_list);
                 
                 // delete file
@@ -213,7 +213,7 @@ void handle_client(int fd)
             data_mode = 1;
             strcpy(file_name, "tempfile-XXXXXX");
             int fd_temp = mkstemp(file_name);
-            temp_file_stream = fdopen(fd_temp, "w");
+            temp_fd = open(file_name, O_WRONLY);
 
             send_formatted(fd, "354 Enter mail, end with '.' on a line by itself.\r\n");
         } else if (strcasecmp("RSET", command) == 0) {
