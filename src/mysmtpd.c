@@ -193,7 +193,7 @@ void handle_client(int fd)
                 int str_len = strlen(parts[1]);
                 char * str = malloc(str_len + 1);
                 strncpy(str, parts[1] + 4, str_len - 4 - 1);
-                dlog("forward: %s\n", str, str_len);
+                dlog("forward: %s, str_len %i\n", str, str_len);
 
                 if (is_valid_user(str, NULL)) {
                     add_user_to_list(&forward_users_list, str);
