@@ -9,6 +9,9 @@
 #include <sys/utsname.h>
 #include <ctype.h>
 #include <strings.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h> 
 
 #define MAX_LINE_LENGTH 1024
 
