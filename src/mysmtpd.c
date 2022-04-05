@@ -72,7 +72,6 @@ void handle_client(int fd)
     user_list_t reverse_users_list = NULL;
     user_list_t forward_users_list = NULL;
     
-    FILE * temp_file_stream = NULL;
     int temp_fd;
     char file_name[] = "tempfile-XXXXXX";
     
@@ -97,7 +96,6 @@ void handle_client(int fd)
                 
                 // delete file
                 unlink(file_name);
-                temp_file_stream = NULL;
 
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
             } else {
@@ -195,7 +193,7 @@ void handle_client(int fd)
                 int str_len = strlen(parts[1]);
                 char * str = malloc(str_len + 1);
                 strncpy(str, parts[1] + 4, str_len - 4 - 1);
-                dlog("forward: %s\n", str);
+                dlog("forward: %s\n", str, str_len);
 
                 if (is_valid_user(str, NULL)) {
                     add_user_to_list(&forward_users_list, str);
