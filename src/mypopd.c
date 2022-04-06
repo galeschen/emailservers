@@ -163,7 +163,7 @@ void handle_client(int fd) {
                             continue;
                         }
                     }
-                    mail_item_t mail = get_mail_item(maillist, messagenumber);
+                    mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
                     if (mail == NULL) {
                         send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
                     } else {
@@ -212,7 +212,7 @@ void handle_client(int fd) {
                     if (messagenumber > mailcount) {
                         send_formatted(fd, "-ERR no such message\r\n");
                     } else {
-                        mail_item_t mail = get_mail_item(maillist, messagenumber);
+                        mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
                             if (mail == NULL) {
                                  send_formatted(fd, "-ERR message %d already deleted\r\n", messagenumber);
                             } else {
