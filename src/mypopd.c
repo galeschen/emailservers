@@ -153,10 +153,20 @@ void handle_client(int fd) {
                 if (splitCount == 1) {
                     send_formatted(fd, "+OK %d messages (%d octets)\r\n", mailcount, mailsize);
                 } else if (splitCount == 2) {
-                    int messagenumber = atoi(parts[1]);
+                    int messagenumber;
+                    if (parts[1] == "0") {
+                        messagenumber = 0
+                    } else {
+                        messagenumber = atoi(parts[1]);
+                        if (messagenumber == 0) {
+                            send_formatted(fd, "-ERR invalid argument type\r\n");
+                            continue;
+                        }
+                    }
+                    
                     mail_item_t mail = get_mail_item(maillist, messagenumber);
                     if (mail == NULL) {
-                        send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", messagenumber - 1);
+                        send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
                     } else {
                         int size = get_mail_item_size(mail);
                         send_formatted(fd, "+OK %d %d\r\n", messagenumber, size);
