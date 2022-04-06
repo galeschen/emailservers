@@ -99,6 +99,7 @@ void handle_client(int fd)
 
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
             } else {
+                dlog(temp_fd, recvbuf, readlineVal)
                 if (write(temp_fd, recvbuf, readlineVal) != readlineVal) {
                     dlog("Could not append line to file");
                 }
