@@ -10,10 +10,10 @@
 #include <sys/utsname.h>
 
 #define MAX_LINE_LENGTH 1024
+int state;
 
 static void handle_client(int fd);
-int state; // 0 = initial, 1 = authorized, 2 = transaction, 3 = update
-int userentered; // 0 = not entered, 1 = entered
+
 int main(int argc, char *argv[]) {
   
     if (argc != 2) {
@@ -55,11 +55,12 @@ void handle_client(int fd) {
     struct utsname my_uname;
     uname(&my_uname);
     state = 0; // start: not authorized
-    userentered = 0; // start: no username entered
-    // int mailcount = 0;
-    char *username = NULL;
-    char *password = NULL;
-    mail_list_t mail = NULL;
+    int userentered = 0; // start: no username entereded
+    int mailcount;
+    int mailsize;
+    char username[MAX_USERNAME_SIZE];
+    char password[MAX_PASSWORD_SIZE];
+    mail_list_t maillist = NULL;
 
     greeting(fd, my_uname); // send greeting
 
@@ -71,16 +72,16 @@ void handle_client(int fd) {
         if (readlineVal == -1) {
             char *msg = "-ERR\r\n";
             send_formatted(fd, msg, my_uname.nodename);
-            if (mail != NULL) {
-                destroymail(mail);
+            if (maillist != NULL) {
+                destroymail(maillist);
             }
             break;
         }
         if (readlineVal == 0) {
             char *msg = "+OK\r\n";
             send_formatted(fd, msg, my_uname.nodename);
-            if (mail != NULL) {
-                destroymail(mail);
+            if (maillist != NULL) {
+                destroymail(maillist);
             }
             break;
         }
@@ -98,44 +99,68 @@ void handle_client(int fd) {
         dlog("%s\n", command);
         
         if (strcasecmp("QUIT", command) == 0) { // can be given in any state
-            handlequit(state, mail, fd, my_uname);
+            handlequit(state, maillist, fd, my_uname);
             break;
         }
 
-        if (strcasecmp("NOOP", command) == 0) {
+        if (strcasecmp("NOOP", command) == 0) { // can be given in any state
             send_formatted(fd, "+OK\r\n");
         }
 
         if (state == 1) { // two options in authorization (1) state: user and pass
             if (strcasecmp("USER", command) == 0) {
-                if (is_valid_user(parts[1], NULL) != 0 ) { // username exists
-                    strcpy(username, parts[1]);
-                    send_formatted(fd, "+OK %s is a valid mailbox, enter password\r\n", parts[1]);
-                    parts[1] = '\0';
-                    userentered = 1;
-                } else {
-                    send_formatted(fd, "-ERR never heard of mailbox\r\n");
+                if (splitCount != 2) { // incorrect number of arguments
+                    send_formatted(fd, "-ERR incorrect number of arguments\r\n");
                 }
-            }
+                else if (is_valid_user(parts[1], NULL) == 0) { // username doesnt exist
+                    send_formatted(fd, "-ERR never heard of mailbox\r\n");
+                } else { // username exists
+                        strcpy(username, parts[1]);
+                        userentered = 1;
+                        send_formatted(fd, "+OK %s is a valid mailbox, enter password\r\n", parts[1]);
+                    }
+                }
 
             if (strcasecmp("PASS", command) == 0) {
-                if (userentered == 0) {
-                    send_formatted(fd, "-ERR no username provided\r\n");
-                }
-                if (parts[1] == NULL) {
+                if (userentered == 0 || splitCount != 2) { // did not do username
+                    send_formatted(fd, "-ERR missing login information\r\n");
+                    userentered = 0;
+                } else if (is_valid_user(username, parts[1]) == 0) { // username doesnt match passwordPA
                     send_formatted(fd, "-ERR invalid password, enter username again\r\n");
-                    parts[1] = '\0';
                     username[0] = '\0';
                     userentered = 0;
-                }
-                if (is_valid_user(username, parts[1]) == 0) {
-                    send_formatted(fd, "+OK matching username and password \r\n");
-                }
-                if (is_valid_user(username, parts[1]) != 0) { //username matches password
-                    mail = load_user_mail(username);
-                    send_formatted(fd, "+OK matching username and password \r\n");
+                } else { //username matches password
+                    send_formatted(fd, "+OK maildrop locked and ready \r\n");
+                    maillist = load_user_mail(username);
                     strcpy(password, parts[1]);
-                    state = 2;
+                    userentered = 0;
+                    state = 2; // transaction state
+                }
+            }
+        }
+
+        if (state == 2) {
+            if (strcasecmp("STAT", command) == 0) {
+                mailcount = get_mail_count(maillist, 0);
+                mailsize = get_mail_list_size(maillist);
+                send_formatted(fd, "+OK %d %d\r\n", mailcount, mailsize);
+            }
+            if (strcasecmp("LIST", command) == 0) {
+                mailcount = get_mail_count(maillist, 0);
+                mailsize = get_mail_list_size(maillist);
+                if (splitCount == 1) {
+                    send_formatted(fd, "+OK %d messages (%d octets)\r\n", mailcount, mailsize);
+                } else if (splitCount == 2) {
+                    int messagenumber = atoi(parts[1]);
+                    mail_item_t mail = get_mail_item(maillist, messagenumber);
+                    if (mail == NULL) {
+                        send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", messagenumber - 1);
+                    } else {
+                        int size = get_mail_item_size(mail);
+                        send_formatted(fd, "+OK %d %d\r\n", messagenumber, size);
+                    }
+                } else {
+                    send_formatted(fd, "-ERR invalid number of arguments\r\n");
                 }
             }
         }
