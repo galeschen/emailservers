@@ -171,8 +171,18 @@ void handle_client(int fd)
                 destroy_user_list(forward_users_list);
             forward_users_list = NULL;
 
-            // 6 is length of "FROM:<"
+            // check if arg starts with FROM:<
+            char* compare = malloc(7);
+            *(compare + 6) = '\0';
+            strncpy(compare,parts[1],6);
             int str_len = strlen(parts[1]);
+            if (strcasecmp("FROM:<", compare) != 0 || ('>'!=parts[1][str_len-1])) {
+                send_invalid(fd);
+                continue;
+            }
+
+            // 6 is length of "FROM:<"
+            // int str_len = strlen(parts[1]);
             char * str = malloc(str_len - 6 - 1);
             strncpy(str, parts[1] + 6, str_len - 6 - 1);
 
@@ -197,8 +207,17 @@ void handle_client(int fd)
             if (reverse_users_list == NULL) {
                 send_out_of_order(fd);
             } else {
-                // 6 is length of "TO:<"
+                // check if arg starts with TO:<
+                char* compare = malloc(5);
+                *(compare + 4) = '\0';
+                strncpy(compare,parts[1],4);
                 int str_len = strlen(parts[1]);
+                if (strcasecmp("TO:<", compare) != 0 || ('>'!=parts[1][str_len-1])) {
+                    send_invalid(fd);
+                    continue;
+                }
+
+                // 6 is length of "TO:<"
                 char * str = calloc(str_len - 4, 1);
                 strncpy(str, parts[1] + 4, str_len - 4 - 1);
                 dlog("forward: %s, str_len %i %i\n", str, str_len, str_len - 4 - 1);
