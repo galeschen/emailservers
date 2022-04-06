@@ -163,7 +163,6 @@ void handle_client(int fd) {
                             continue;
                         }
                     }
-                    
                     mail_item_t mail = get_mail_item(maillist, messagenumber);
                     if (mail == NULL) {
                         send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
@@ -173,6 +172,26 @@ void handle_client(int fd) {
                     }
                 } else {
                     send_formatted(fd, "-ERR invalid number of arguments\r\n");
+                }
+            }
+            if (strcasecmp("RETR", command) == 0) {
+                if (splitCount != 2) {
+                    send_formatted(fd, "-ERR invalid number of arugments\r\n");
+                } else {
+                    int messagenumber = atoi(parts[1]);
+                    mail_item_t mail = get_mail_item(maillist, messagenumber);
+                    if (mail == NULL) {
+                        send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
+                    } else {
+                        int size = get_mail_item_size(mail);
+                        send_formatted(fd, "+OK %d octets\r\n", size);
+                        char file_name[1000];
+                        sprintf(file_name, "mail.store/%s/%d.mail", username, messagenumber);
+                        FILE* file = fopen(file_name, "r");
+                        char buffer[100];
+                        fread(buffer, 1, 100, file);
+                        send_formatted(fd, buffer);
+                    }
                 }
             }
         }
