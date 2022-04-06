@@ -196,7 +196,8 @@ void handle_client(int fd) {
                         int size = get_mail_item_size(mail);
                         send_formatted(fd, "+OK %d octets\r\n", size);
                         FILE* file = get_mail_item_contents(mail);
-                        char buffer[100];
+                        // char buffer[100];
+                        char * buffer = malloc(100);
                         while (1) {
                             size_t readlength = fread(buffer, 1, 100, file);
                             send_formatted(fd, buffer);
