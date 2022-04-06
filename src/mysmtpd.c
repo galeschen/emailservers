@@ -104,10 +104,14 @@ void handle_client(int fd)
                 unlink(file_name);
                 trans_mode = 0;
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
-            } else {
-                dlog("temp_fd: %i, %s, %i\n", temp_fd, recvbuf, readlineVal);
-                if (write(temp_fd, recvbuf, readlineVal) != readlineVal) {
+            } else { // remove dot (first character)
+                if (recvbuf[0] == '.') {
+                    write(temp_fd, recvbuf + 1, readlineVal - 1);
+                } else {
+                    dlog("temp_fd: %i, %s, %i\n", temp_fd, recvbuf, readlineVal);
+                    if (write(temp_fd, recvbuf, readlineVal) != readlineVal) {
                     dlog("Could not append line to file");
+                    }
                 }
             }
             continue;
