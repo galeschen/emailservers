@@ -107,6 +107,7 @@ void handle_client(int fd) {
 
         if (strcasecmp("NOOP", command) == 0) { // can be given in any state
             send_formatted(fd, "+OK\r\n");
+            continue;
         }
 
         if (state == 1) { // two options in authorization (1) state: user and pass
@@ -122,8 +123,7 @@ void handle_client(int fd) {
                         send_formatted(fd, "+OK %s is a valid mailbox, enter password\r\n", parts[1]);
                     }
                 }
-
-            if (strcasecmp("PASS", command) == 0) {
+            else if (strcasecmp("PASS", command) == 0) {
                 if (userentered == 0 || splitCount != 2) { // did not do username
                     send_formatted(fd, "-ERR missing login information\r\n");
                     userentered = 0;
@@ -139,6 +139,10 @@ void handle_client(int fd) {
                     state = 2; // transaction state
                 }
             }
+            else {
+                send_formatted(fd, "-ERR invalid command \r\n");
+            }
+            continue;
         }
 
         if (state == 2) {
@@ -147,24 +151,29 @@ void handle_client(int fd) {
                 mailsize = get_mail_list_size(maillist);
                 send_formatted(fd, "+OK %d %d\r\n", mailcount, mailsize);
             }
-            if (strcasecmp("LIST", command) == 0) {
+            else if (strcasecmp("LIST", command) == 0) {
                 mailcount = get_mail_count(maillist, 0);
+                int includedelete = get_mail_count(maillist, 1);
                 mailsize = get_mail_list_size(maillist);
                 if (splitCount == 1) {
                     send_formatted(fd, "+OK %d messages (%d octets)\r\n", mailcount, mailsize);
+                    int i = 0;
+                    while (i < includedelete) {
+                        mail_item_t mail = get_mail_item(maillist, i);
+                        if (mail != NULL) {
+                            int size = get_mail_item_size(mail);
+                            send_formatted(fd, "%d %d\r\n", i + 1, size);
+                        }
+                        i++;
+                    }
+                    send_formatted(fd, ".\r\n");
                 } else if (splitCount == 2) {
-                    int messagenumber;
-                    if (strcasecmp(parts[1], "0") == 0) {
-                        messagenumber = 0;
-                    } else {
-                        messagenumber = atoi(parts[1]);
+                    int messagenumber = atoi(parts[1]);
                         if (messagenumber == 0) {
-                            send_formatted(fd, "-ERR invalid argument type\r\n");
+                            send_formatted(fd, "-ERR invalid message number\r\n");
                             continue;
                         }
-                    }
-                    
-                    mail_item_t mail = get_mail_item(maillist, messagenumber);
+                    mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
                     if (mail == NULL) {
                         send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
                     } else {
@@ -174,6 +183,64 @@ void handle_client(int fd) {
                 } else {
                     send_formatted(fd, "-ERR invalid number of arguments\r\n");
                 }
+            }
+            else if (strcasecmp("RETR", command) == 0) {
+                if (splitCount != 2) {
+                    send_formatted(fd, "-ERR invalid number of arugments\r\n");
+                } else {
+                    int messagenumber = atoi(parts[1]);
+                    mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
+                    if (mail == NULL) {
+                        send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
+                    } else {
+                        int size = get_mail_item_size(mail);
+                        send_formatted(fd, "+OK %d octets\r\n", size);
+                        FILE* file = get_mail_item_contents(mail);
+                        char * buffer = malloc(100);
+                        while (1) {
+                            size_t readlength = fread(buffer, 1, 100, file);
+                            send_formatted(fd, buffer);
+                            if (readlength < 100) {
+                                break;
+                            }
+                        }
+                        free(buffer);
+                        send_formatted(fd, ".\r\n");
+                    }
+                }
+            }
+            else if (strcasecmp("DELE", command) == 0) {
+                if (splitCount != 2) {
+                  send_formatted(fd, "-ERR invalid number of arugments\r\n");
+              } else {
+                  int messagenumber = atoi(parts[1]);
+                        if (messagenumber == 0) {
+                            send_formatted(fd, "-ERR invalid message number\r\n");
+                            continue;
+                        }
+                    mailcount = get_mail_count(maillist, 1);
+                    if (messagenumber > mailcount) {
+                        send_formatted(fd, "-ERR no such message\r\n");
+                    } else {
+                        mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
+                            if (mail == NULL) {
+                                 send_formatted(fd, "-ERR message %d already deleted\r\n", messagenumber);
+                            } else {
+                                mark_mail_item_deleted(mail);
+                                send_formatted(fd, "+OK message %d deleted\r\n", messagenumber);
+                            }
+                        }
+              }
+            }
+            else if (strcasecmp("RSET", command) == 0) {
+                int precount = get_mail_count(maillist, 0);
+                reset_mail_list_deleted_flag(maillist);
+                int postcount = get_mail_count(maillist, 0);
+                int difference = postcount - precount;
+                send_formatted(fd, "+OK %d messages restored\r\n", difference);
+            }
+            else {
+                send_formatted(fd, "-ERR invalid command \r\n");
             }
         }
     }

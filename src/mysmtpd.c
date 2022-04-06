@@ -77,6 +77,7 @@ void handle_client(int fd)
     
     int data_mode = 0;
     int sent_helo = 0;
+    int trans_mode = 0;
 
     while (1)
     {
@@ -84,6 +85,11 @@ void handle_client(int fd)
         int readlineVal = nb_read_line(nb, recvbuf);
         if (readlineVal == 0 || readlineVal == -1) {
             break;
+        }
+
+        if (recvbuf[readlineVal] == '\n') {
+            send_invalid(fd);
+            continue;
         }
 
         if (data_mode) {
@@ -96,12 +102,16 @@ void handle_client(int fd)
                 
                 // delete file
                 unlink(file_name);
-
+                trans_mode = 0;
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
-            } else {
-                dlog("temp_fd: %i, %s, %i\n", temp_fd, recvbuf, readlineVal);
-                if (write(temp_fd, recvbuf, readlineVal) != readlineVal) {
+            } else { // remove dot (first character)
+                if (recvbuf[0] == '.') {
+                    write(temp_fd, recvbuf + 1, readlineVal - 1);
+                } else {
+                    dlog("temp_fd: %i, %s, %i\n", temp_fd, recvbuf, readlineVal);
+                    if (write(temp_fd, recvbuf, readlineVal) != readlineVal) {
                     dlog("Could not append line to file");
+                    }
                 }
             }
             continue;
@@ -126,6 +136,7 @@ void handle_client(int fd)
             break;
         } else if (strcasecmp("HELO", command) == 0 || strcasecmp("EHLO", command) == 0) {
             sent_helo = 1;
+            trans_mode = 0;
             send_formatted(fd, "250 %s\r\n", domain);
         } else if (strcasecmp("VRFY", command) == 0) {
             if (splitCount != 2) {
@@ -150,8 +161,8 @@ void handle_client(int fd)
                 continue;
             }
             
-            // check for 1 param only
-            if (splitCount != 2) {
+            // check for 1 param only and that we're not already in transaction mode
+            if (splitCount != 2 || trans_mode == 1) {
                 send_invalid(fd);
                 continue;
             }
@@ -164,15 +175,25 @@ void handle_client(int fd)
                 destroy_user_list(forward_users_list);
             forward_users_list = NULL;
 
-            // 6 is length of "FROM:<"
+            // check if arg starts with FROM:<
+            char* compare = malloc(7);
+            *(compare + 6) = '\0';
+            strncpy(compare,parts[1],6);
             int str_len = strlen(parts[1]);
+            if (strcasecmp("FROM:<", compare) != 0 || ('>'!=parts[1][str_len-1])) {
+                send_invalid(fd);
+                continue;
+            }
+
+            // 6 is length of "FROM:<"
+            // int str_len = strlen(parts[1]);
             char * str = malloc(str_len - 6 - 1);
             strncpy(str, parts[1] + 6, str_len - 6 - 1);
 
             add_user_to_list(&reverse_users_list, str);
             dlog("recieve: %s\n", str);
             free(str);
-
+            trans_mode = 1;
             send_formatted(fd, "250 OK\r\n");
 
         } else if (strcasecmp("RCPT", command) == 0) {
@@ -190,8 +211,17 @@ void handle_client(int fd)
             if (reverse_users_list == NULL) {
                 send_out_of_order(fd);
             } else {
-                // 6 is length of "TO:<"
+                // check if arg starts with TO:<
+                char* compare = malloc(5);
+                *(compare + 4) = '\0';
+                strncpy(compare,parts[1],4);
                 int str_len = strlen(parts[1]);
+                if (strcasecmp("TO:<", compare) != 0 || ('>'!=parts[1][str_len-1])) {
+                    send_invalid(fd);
+                    continue;
+                }
+
+                // 6 is length of "TO:<"
                 char * str = calloc(str_len - 4, 1);
                 strncpy(str, parts[1] + 4, str_len - 4 - 1);
                 dlog("forward: %s, str_len %i %i\n", str, str_len, str_len - 4 - 1);
@@ -230,6 +260,7 @@ void handle_client(int fd)
             if (forward_users_list)
                 destroy_user_list(forward_users_list);
             forward_users_list = NULL;
+            trans_mode = 0;
 
             send_formatted(fd, "250 OK %s\r\n", domain);
         } else if (strcasecmp("EXPN", command) == 0 || strcasecmp("HELP", command) == 0) {
