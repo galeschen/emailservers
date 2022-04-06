@@ -77,6 +77,7 @@ void handle_client(int fd)
     
     int data_mode = 0;
     int sent_helo = 0;
+    int trans_mode = 0;
 
     while (1)
     {
@@ -84,6 +85,11 @@ void handle_client(int fd)
         int readlineVal = nb_read_line(nb, recvbuf);
         if (readlineVal == 0 || readlineVal == -1) {
             break;
+        }
+
+        if (recvbuf[readlineVal] == '\n') {
+            send_invalid(fd);
+            continue;
         }
 
         if (data_mode) {
@@ -96,7 +102,7 @@ void handle_client(int fd)
                 
                 // delete file
                 unlink(file_name);
-
+                trans_mode = 0;
                 send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
             } else {
                 dlog("temp_fd: %i, %s, %i\n", temp_fd, recvbuf, readlineVal);
@@ -126,6 +132,7 @@ void handle_client(int fd)
             break;
         } else if (strcasecmp("HELO", command) == 0 || strcasecmp("EHLO", command) == 0) {
             sent_helo = 1;
+            trans_mode = 0;
             send_formatted(fd, "250 %s\r\n", domain);
         } else if (strcasecmp("VRFY", command) == 0) {
             if (splitCount != 2) {
@@ -150,8 +157,8 @@ void handle_client(int fd)
                 continue;
             }
             
-            // check for 1 param only
-            if (splitCount != 2) {
+            // check for 1 param only and that we're not already in transaction mode
+            if (splitCount != 2 || trans_mode == 1) {
                 send_invalid(fd);
                 continue;
             }
@@ -172,7 +179,7 @@ void handle_client(int fd)
             add_user_to_list(&reverse_users_list, str);
             dlog("recieve: %s\n", str);
             free(str);
-
+            trans_mode = 1;
             send_formatted(fd, "250 OK\r\n");
 
         } else if (strcasecmp("RCPT", command) == 0) {
@@ -230,6 +237,7 @@ void handle_client(int fd)
             if (forward_users_list)
                 destroy_user_list(forward_users_list);
             forward_users_list = NULL;
+            trans_mode = 0;
 
             send_formatted(fd, "250 OK %s\r\n", domain);
         } else if (strcasecmp("EXPN", command) == 0 || strcasecmp("HELP", command) == 0) {
