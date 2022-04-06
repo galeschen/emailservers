@@ -154,7 +154,7 @@ void handle_client(int fd) {
                     send_formatted(fd, "+OK %d messages (%d octets)\r\n", mailcount, mailsize);
                 } else if (splitCount == 2) {
                     int messagenumber;
-                    if (strcasecmp(parts[1], "0")) {
+                    if (strcasecmp(parts[1], "0") == 0) {
                         messagenumber = 0;
                     } else {
                         messagenumber = atoi(parts[1]);
