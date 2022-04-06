@@ -33,6 +33,22 @@ void greeting(int fd, struct utsname name) {
     state = 1;
 }
 
+void send_invalid(int fd) { // send when command isn't valid for state
+    send_formatted(fd, "-ERR invalid command\r\n");
+}
+
+void send_invalidnumargs(int fd) { // send when incorrect number of arguments in command
+    send_formatted(fd, "-ERR invalid number of arguments\r\n");
+}
+
+void send_nomssg(int fd, int mailcount) { // send when message number is too big
+    send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
+}
+
+void send_invalidmssgnum(int fd) { // send when message number is 0
+    send_formatted(fd, "-ERR invalid message number\r\n");
+}
+
 void destroymail(mail_list_t mail) {
     reset_mail_list_deleted_flag(mail);
     destroy_mail_list(mail);
@@ -113,7 +129,7 @@ void handle_client(int fd) {
         if (state == 1) { // two options in authorization (1) state: user and pass
             if (strcasecmp("USER", command) == 0) {
                 if (splitCount != 2) { // incorrect number of arguments
-                    send_formatted(fd, "-ERR incorrect number of arguments\r\n");
+                    send_invalidnumargs(fd);
                 }
                 else if (is_valid_user(parts[1], NULL) == 0) { // username doesnt exist
                     send_formatted(fd, "-ERR never heard of mailbox\r\n");
@@ -140,7 +156,7 @@ void handle_client(int fd) {
                 }
             }
             else {
-                send_formatted(fd, "-ERR invalid command \r\n");
+                send_invalid(fd);
             }
             continue;
         }
@@ -151,6 +167,7 @@ void handle_client(int fd) {
                 mailsize = get_mail_list_size(maillist);
                 send_formatted(fd, "+OK %d %d\r\n", mailcount, mailsize);
             }
+            
             else if (strcasecmp("LIST", command) == 0) {
                 mailcount = get_mail_count(maillist, 0);
                 int includedelete = get_mail_count(maillist, 1);
@@ -170,57 +187,58 @@ void handle_client(int fd) {
                 } else if (splitCount == 2) {
                     int messagenumber = atoi(parts[1]);
                         if (messagenumber == 0) {
-                            send_formatted(fd, "-ERR invalid message number\r\n");
+                            send_invalidmssgnum(fd);
                             continue;
                         }
                     mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
                     if (mail == NULL) {
-                        send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
+                        send_nomssg(fd,mailcount);
                     } else {
                         int size = get_mail_item_size(mail);
                         send_formatted(fd, "+OK %d %d\r\n", messagenumber, size);
                     }
                 } else {
-                    send_formatted(fd, "-ERR invalid number of arguments\r\n");
+                    send_invalidnumargs(fd);
                 }
             }
             else if (strcasecmp("RETR", command) == 0) {
                 if (splitCount != 2) {
-                    send_formatted(fd, "-ERR invalid number of arugments\r\n");
+                    send_invalidnumargs(fd);
                 } else {
                     int messagenumber = atoi(parts[1]);
                     mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
+                    mailcount = get_mail_count(maillist, 0);
+                    if (messagenumber == 0) {
+                        send_invalidmssgnum(fd);
+                    }
                     if (mail == NULL) {
-                        send_formatted(fd, "-ERR no such message, only %d messages in maildrop\r\n", mailcount);
+                        send_nomssg(fd, mailcount);
                     } else {
                         int size = get_mail_item_size(mail);
                         send_formatted(fd, "+OK %d octets\r\n", size);
                         FILE* file = get_mail_item_contents(mail);
-                        char * buffer = malloc(100);
-                        while (1) {
-                            size_t readlength = fread(buffer, 1, 100, file);
-                            send_formatted(fd, buffer);
-                            if (readlength < 100) {
-                                break;
-                            }
+                        char buffer[MAX_LINE_LENGTH + 1];
+                        // char msg[100];
+                        while (fgets (buffer, MAX_LINE_LENGTH + 1, file) != NULL) {
+                            send_formatted(fd, "%s", buffer);
                         }
-                        free(buffer);
                         send_formatted(fd, ".\r\n");
+                        fclose(file);
                     }
                 }
             }
             else if (strcasecmp("DELE", command) == 0) {
                 if (splitCount != 2) {
-                  send_formatted(fd, "-ERR invalid number of arugments\r\n");
+                  send_invalidnumargs(fd);
               } else {
                   int messagenumber = atoi(parts[1]);
                         if (messagenumber == 0) {
-                            send_formatted(fd, "-ERR invalid message number\r\n");
+                            send_invalidmssgnum(fd);
                             continue;
                         }
                     mailcount = get_mail_count(maillist, 1);
                     if (messagenumber > mailcount) {
-                        send_formatted(fd, "-ERR no such message\r\n");
+                        send_nomssg(fd, mailcount);
                     } else {
                         mail_item_t mail = get_mail_item(maillist, messagenumber - 1);
                             if (mail == NULL) {
@@ -240,7 +258,7 @@ void handle_client(int fd) {
                 send_formatted(fd, "+OK %d messages restored\r\n", difference);
             }
             else {
-                send_formatted(fd, "-ERR invalid command \r\n");
+                send_invalid(fd);
             }
         }
     }
