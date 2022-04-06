@@ -194,6 +194,34 @@ void handle_client(int fd) {
                     }
                 }
             }
+            if (strcasecmp("DELE", command) == 0) {
+                if (splitCount != 2) {
+                  send_formatted(fd, "-ERR invalid number of arugments\r\n");
+              } else {
+                  int messagenumber;
+                  if (strcasecmp(parts[1], "0") == 0) {
+                        messagenumber = 0;
+                    } else {
+                        messagenumber = atoi(parts[1]);
+                        if (messagenumber == 0) {
+                            send_formatted(fd, "-ERR invalid argument type\r\n");
+                            continue;
+                        }
+                    }
+                    mailcount = get_mail_count(maillist, 1);
+                    if (messagenumber > mailcount) {
+                        send_formatted(fd, "-ERR no such message\r\n");
+                    } else {
+                        mail_item_t mail = get_mail_item(maillist, messagenumber);
+                            if (mail == NULL) {
+                                 send_formatted(fd, "-ERR message %d already deleted\r\n", messagenumber);
+                            } else {
+                                mark_mail_item_deleted(mail);
+                                send_formatted(fd, "+OK message %d deleted\r\n", messagenumber);
+                            }
+                        }
+              }
+            }
         }
     }
     nb_destroy(nb);
