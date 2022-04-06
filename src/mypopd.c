@@ -155,7 +155,7 @@ void handle_client(int fd) {
                 } else if (splitCount == 2) {
                     int messagenumber;
                     if (parts[1] == "0") {
-                        messagenumber = 0
+                        messagenumber = 0;
                     } else {
                         messagenumber = atoi(parts[1]);
                         if (messagenumber == 0) {
