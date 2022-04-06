@@ -172,17 +172,6 @@ void handlelist(int splitCount, int fd, char * argument) {
     }
 }
 
-// command: RSET
-// params: file descriptor
-void handlerset(int fd) {
-    int precount = get_mail_count(maillist, 0);
-    reset_mail_list_deleted_flag(maillist);
-    int postcount = get_mail_count(maillist, 0);
-    int difference = postcount - precount;
-    send_formatted(fd, "+OK %d messages restored\r\n", difference);
-}
-
-
 // command: RETR
 // params: number of parts in command, file descriptor, value of first argument in command
 void handleretr(int splitCount, int fd, char * argument) {
@@ -237,6 +226,16 @@ void handledele(int splitCount, int fd, char * argument) {
             }
         }
     }
+}
+
+// command: RSET
+// params: file descriptor
+void handlerset(int fd) {
+    int precount = get_mail_count(maillist, 0);
+    reset_mail_list_deleted_flag(maillist);
+    int postcount = get_mail_count(maillist, 0);
+    int difference = postcount - precount;
+    send_formatted(fd, "+OK %d messages restored\r\n", difference);
 }
 
 void handle_client(int fd) {
@@ -314,7 +313,7 @@ void handle_client(int fd) {
             continue;
         }
 
-        if (state == 2) {
+        if (state == 2) { // options in transaction state
             if (strcasecmp("STAT", command) == 0) {
                 handlestat(fd);
             }
