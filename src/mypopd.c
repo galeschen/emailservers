@@ -67,6 +67,8 @@ void handle_client(int fd) {
     while (1) {
         int readlineVal;
         readlineVal = nb_read_line(nb, recvbuf);
+        
+        dlog("readlineVal: %i, %s", readlineVal, recvbuf);
 
         //  -1 is error, 0 is we are done
         if (readlineVal == -1) {
