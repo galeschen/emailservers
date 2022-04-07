@@ -35,25 +35,22 @@ void send_invalid(int fd) {
     send_formatted(fd, "501 Invalid command.\r\n");
 }
 
+void send_valid(int fd) {
+    send_formatted(fd, "250 OK\r\n");
+}
+
 void send_out_of_order(int fd) {
     send_formatted(fd, "503 Bad sequence of commands\r\n");
 }
 
-void append_to_buffer(char * buffer, char * new_str) {
-    // expand and copy string
-    char *str;
-    if (buffer == NULL) {
-        // if mail buffer not initialized
-        str = malloc(strlen(new_str) + 1);
-        strcpy(str, new_str);
-    } else {
-        str = malloc(strlen(buffer) + strlen(new_str) + 1);
-        strcpy(str, buffer);
-        strcat(str, new_str);
-    }
-    buffer = str;
+void free_users_lists(user_list_t* reverse_users_list, user_list_t* forward_users_list) {
+    if (*reverse_users_list)
+        destroy_user_list(*reverse_users_list);
+    *reverse_users_list = NULL;
+    if (*forward_users_list)
+        destroy_user_list(*forward_users_list);
+    *forward_users_list = NULL;
 }
-
 
 void handle_client(int fd)
 {
@@ -87,6 +84,7 @@ void handle_client(int fd)
             break;
         }
 
+        // if command is too long send invalid
         if (recvbuf[readlineVal] == '\n') {
             send_invalid(fd);
             continue;
@@ -103,7 +101,7 @@ void handle_client(int fd)
                 // delete file
                 unlink(file_name);
                 trans_mode = 0;
-                send_formatted(fd, "250 %s Message accepted for delivery.\r\n", domain);
+                send_valid(fd);
             } else { // remove dot (first character)
                 if (recvbuf[0] == '.') {
                     write(temp_fd, recvbuf + 1, readlineVal - 1);
@@ -130,7 +128,7 @@ void handle_client(int fd)
 
         if (strcasecmp("NOOP", command) == 0) {
             // ignore extra params, still good
-            send_formatted(fd, "250 OK\r\n");
+            send_valid(fd);
         } else if (strcasecmp("QUIT", command) == 0) {
             send_formatted(fd, "221 OK\r\n");
             break;
@@ -167,13 +165,7 @@ void handle_client(int fd)
                 continue;
             }
 
-            // free the paths.
-            if (reverse_users_list)
-                destroy_user_list(reverse_users_list);
-            reverse_users_list = NULL;
-            if (forward_users_list)
-                destroy_user_list(forward_users_list);
-            forward_users_list = NULL;
+            free_users_lists(&reverse_users_list, &forward_users_list);
 
             // check if arg starts with FROM:<
             char* compare = malloc(7);
@@ -186,15 +178,16 @@ void handle_client(int fd)
             }
 
             // 6 is length of "FROM:<"
-            // int str_len = strlen(parts[1]);
-            char * str = malloc(str_len - 6 - 1);
-            strncpy(str, parts[1] + 6, str_len - 6 - 1);
-
+            const int FROM_SIZE = 6;
+            char * str = malloc(str_len - FROM_SIZE - 1);
+            strncpy(str, parts[1] + FROM_SIZE, str_len - FROM_SIZE - 1);
             add_user_to_list(&reverse_users_list, str);
             dlog("recieve: %s\n", str);
             free(str);
+
             trans_mode = 1;
-            send_formatted(fd, "250 OK\r\n");
+            send_valid(fd);
+
 
         } else if (strcasecmp("RCPT", command) == 0) {
             // RCPT TO:<forward-path> [ SP <rcpt-parameters> ] <CRLF>
@@ -228,7 +221,7 @@ void handle_client(int fd)
 
                 if (is_valid_user(str, NULL)) {
                     add_user_to_list(&forward_users_list, str);
-                    send_formatted(fd, "250 OK\r\n");
+                    send_valid(fd);
                 } else {
                     send_formatted(fd, "550 user name does not exist\r\n");
                 }
@@ -253,13 +246,8 @@ void handle_client(int fd)
                 continue;
             }
 
-            // free the paths
-            if (reverse_users_list)
-                destroy_user_list(reverse_users_list);
-            reverse_users_list = NULL;
-            if (forward_users_list)
-                destroy_user_list(forward_users_list);
-            forward_users_list = NULL;
+            free_users_lists(&reverse_users_list, &forward_users_list);
+            
             trans_mode = 0;
 
             send_formatted(fd, "250 OK %s\r\n", domain);
